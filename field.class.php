@@ -23,7 +23,6 @@
  */
 
 use customfield_pattern\api;
-use customfield_pattern\form\masked_text_element;
 use profilefield_pattern\local\config;
 
 /**
@@ -48,14 +47,7 @@ class profile_field_pattern extends profile_field_base {
         $config = $this->get_config();
         $size = (int) $this->field->param1;
         $attributes = ['size' => $size > 0 ? $size : config::DEFAULT_SIZE] + api::input_attributes($config);
-
-        // A masked input asks for its JavaScript when rendered; see masked_text_element for why.
-        $type = 'text';
-        if (api::masks($config)) {
-            masked_text_element::register();
-            $type = masked_text_element::TYPE;
-        }
-        $mform->addElement($type, $this->inputname, format_string($this->field->name), $attributes);
+        $mform->addElement(api::element_type($config), $this->inputname, format_string($this->field->name), $attributes);
         $mform->setType($this->inputname, PARAM_TEXT);
     }
 
@@ -100,12 +92,19 @@ class profile_field_pattern extends profile_field_base {
     /**
      * Validate the typed value; uniqueness is checked on the value as it would be stored
      *
-     * Called by the profile forms, the signup form and the upload users tool.
+     * Called by the profile forms, the signup form and the upload users tool. A field locked for
+     * this user is not checked: the form froze it ({@see profile_field_base::edit_field_set_locked()},
+     * same condition) and submits the stored value, which may predate the current settings and
+     * which the user cannot change, so an error there would block every save of the profile.
      *
      * @param stdClass $usernew
      * @return array element name => error message
      */
     public function edit_validate_field($usernew) {
+        if ($this->is_locked() && !has_capability('moodle/user:update', context_system::instance())) {
+            return [];
+        }
+
         $value = $usernew->{$this->inputname} ?? '';
         if (!is_scalar($value) || trim((string) $value) === '') {
             return parent::edit_validate_field($usernew);
@@ -130,15 +129,21 @@ class profile_field_pattern extends profile_field_base {
      * The forms validate before they save, but the user web services (core_user_create_users,
      * core_user_update_users) and the authentication plugins that map external attributes call
      * profile_save_data() without profile_validation(). A value the pattern rejects is then not
-     * written and the stored one stays: what is stored has passed {@see api::validate()}.
+     * written and the stored one stays: what is stored has passed {@see api::validate()}. Those
+     * callers have no error channel, so the refusal is reported to developers only.
      *
      * @param stdClass $usernew
      * @return void
      */
     public function edit_save_data($usernew) {
         $value = $usernew->{$this->inputname} ?? null;
-        if (is_scalar($value) && trim((string) $value) !== '' && api::validate($this->get_config(), (string) $value) !== null) {
-            return;
+        if (is_scalar($value) && trim((string) $value) !== '') {
+            $error = api::validate($this->get_config(), (string) $value);
+            if ($error !== null) {
+                debugging("Profile field {$this->field->shortname} of user {$usernew->id} kept its stored value: " .
+                    strip_tags($error), DEBUG_DEVELOPER);
+                return;
+            }
         }
         parent::edit_save_data($usernew);
     }

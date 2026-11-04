@@ -24,6 +24,7 @@
 
 use customfield_pattern\api;
 use profilefield_pattern\local\config;
+use profilefield_pattern\task\renormalise_values;
 
 /**
  * Definition form of a pattern profile field
@@ -147,15 +148,26 @@ class profile_define_pattern extends profile_define_base {
     /**
      * Pack the pattern settings into param3 and store the default value normalised
      *
+     * When an existing field's pattern settings change, its stored values are rewritten in the new
+     * shape by {@see renormalise_values}, which reads the settings once they are saved.
+     *
      * @param stdClass $data from the definition form
      * @return stdClass the record to save
      */
     public function define_save_preprocess($data) {
+        global $DB;
         $config = $this->submitted_config($data);
         $data->param3 = config::encode($config);
         unset($data->pattern);
         if (isset($data->defaultdata)) {
             $data->defaultdata = api::normalise($config, (string) $data->defaultdata);
+        }
+
+        if (!empty($data->id)) {
+            $stored = $DB->get_field('user_info_field', 'param3', ['id' => $data->id]);
+            if ($stored !== false && $stored !== $data->param3) {
+                renormalise_values::queue((int) $data->id);
+            }
         }
         return $data;
     }

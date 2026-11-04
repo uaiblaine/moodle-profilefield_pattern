@@ -13,4 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   expression), storing values formatted or raw and showing them formatted. Uniqueness compares
   stored values; the upload users tool reports rejected values; paths that skip validation
   never store a rejected value.
-- Privacy provider for the field's values in `user_info_data`.
+- Privacy provider for the field's values in `user_info_data`, one subcontext per field (a
+  shared subcontext kept only the last field of a user with several).
+- Changing a field's pattern settings queues an adhoc task that rewrites the stored values in the
+  new shape, so uniqueness, report filters and the bulk download keep seeing one shape.
+- A field locked for the user is not validated when they save their profile, so a value stored
+  under earlier settings cannot block the save.
+- A value refused on a path without validation (user web services, authentication sync) is
+  reported through `debugging()` at developer level.
+- Requires `customfield_pattern` 2026110300, whose `api::element_type()` names the input element.
