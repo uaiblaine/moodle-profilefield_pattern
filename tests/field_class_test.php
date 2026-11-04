@@ -26,6 +26,7 @@ global $CFG;
 require_once($CFG->dirroot . '/user/profile/lib.php');
 require_once($CFG->dirroot . '/user/profile/field/pattern/field.class.php');
 require_once($CFG->dirroot . '/admin/tool/uploaduser/locallib.php');
+require_once($CFG->libdir . '/authlib.php');
 require_once($CFG->libdir . '/formslib.php');
 
 /**
@@ -76,7 +77,7 @@ final class field_class_test extends \advanced_testcase {
     }
 
     /**
-     * Save a value for a user the way the profile forms do.
+     * Save a value for a user through profile_save_data(), without validating it first.
      *
      * @param int $userid
      * @param string $value
@@ -157,6 +158,85 @@ final class field_class_test extends \advanced_testcase {
     }
 
     /**
+     * Uniqueness the other way round: a masked stored value against the raw spelling.
+     */
+    public function test_uniqueness_finds_a_masked_value_typed_raw(): void {
+        $this->resetAfterTest();
+        $field = $this->create_field(['preset' => 'cpf'], ['forceunique' => 1]);
+        $owner = $this->getDataGenerator()->create_user();
+        $other = $this->getDataGenerator()->create_user();
+        $this->save((int) $owner->id, self::CPF_RAW);
+        $this->assertSame(self::CPF, $this->stored($field, (int) $owner->id));
+
+        $usernew = (object) ['id' => $other->id, 'profile_field_doc' => self::CPF_RAW];
+        $this->assertSame(
+            ['profile_field_doc' => get_string('valuealreadyused')],
+            $this->instance($field, (int) $other->id)->edit_validate_field($usernew)
+        );
+    }
+
+    /**
+     * The signup form's validation reports a value the pattern rejects.
+     */
+    public function test_signup_validation_reports_the_pattern_error(): void {
+        $this->resetAfterTest();
+        set_config('registerauth', 'email');
+        $this->create_field(['preset' => 'cpf'], ['signup' => 1]);
+        $data = [
+            'username' => 'newcomer', 'password' => 'Signup-Passw0rd!', 'email' => 'newcomer@example.com',
+            'email2' => 'newcomer@example.com', 'firstname' => 'New', 'lastname' => 'Comer',
+        ];
+
+        $errors = signup_validate_data($data + ['profile_field_doc' => self::CPF_BAD], []);
+        $this->assertSame(get_string('errorcpf', 'customfield_pattern'), $errors['profile_field_doc'] ?? null);
+
+        // Control: the same form with a valid CPF raises nothing on the field.
+        $this->assertArrayNotHasKey('profile_field_doc', signup_validate_data($data + ['profile_field_doc' => self::CPF], []));
+    }
+
+    /**
+     * A field locked for the user is not checked: a value stored under earlier settings, which they
+     * cannot change, must not block the save of their profile.
+     */
+    public function test_locked_field_is_not_validated_for_the_user(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $field = $this->create_field(['preset' => 'cpf'], ['locked' => 1]);
+        $user = $this->getDataGenerator()->create_user();
+        $DB->insert_record('user_info_data', ['userid' => $user->id, 'fieldid' => $field->id, 'data' => self::CPF_BAD]);
+        $usernew = (object) ['id' => $user->id, 'profile_field_doc' => self::CPF_BAD];
+
+        $this->setUser($user);
+        $this->assertSame([], profile_validation($usernew, []));
+
+        // Controls: the same value is checked when the field is not locked, and for an administrator.
+        $DB->set_field('user_info_field', 'locked', 0, ['id' => $field->id]);
+        $this->assertArrayHasKey('profile_field_doc', profile_validation($usernew, []));
+        $DB->set_field('user_info_field', 'locked', 1, ['id' => $field->id]);
+        $this->setAdminUser();
+        $this->assertArrayHasKey('profile_field_doc', profile_validation($usernew, []));
+    }
+
+    /**
+     * A locked field is frozen showing its stored value with the mask, not the raw stored string.
+     */
+    public function test_locked_field_shows_the_formatted_value(): void {
+        $this->resetAfterTest();
+        $field = $this->create_field(['preset' => 'cpf', 'storeformat' => 'raw'], ['locked' => 1]);
+        $user = $this->getDataGenerator()->create_user();
+        $this->save((int) $user->id, self::CPF);
+        $this->setUser($user);
+
+        $mform = new \MoodleQuickForm('test', 'post', '');
+        $instance = $this->instance($field, (int) $user->id);
+        $instance->edit_field_add($mform);
+        $instance->edit_field_set_locked($mform);
+
+        $this->assertTrue($mform->getElement('profile_field_doc')->isFrozen());
+        $this->assertSame(self::CPF, $mform->getElementValue('profile_field_doc'));
+    }
+
+    /**
      * A saved value is stored per "Store as" and shown with its mask, escaped.
      */
     public function test_save_stores_normalised_and_display_restores_the_mask(): void {
@@ -214,6 +294,27 @@ final class field_class_test extends \advanced_testcase {
 
         $this->save((int) $user->id, self::CPF_BAD);
         $this->assertSame(self::CPF, $this->stored($field, (int) $user->id));
+        $this->assertDebuggingCalled("Profile field doc of user {$user->id} kept its stored value: " .
+            get_string('errorcpf', 'customfield_pattern'));
+    }
+
+    /**
+     * The refusal on paths without validation covers every rule, not only the check digit.
+     */
+    public function test_save_without_validation_refuses_mask_and_length_errors(): void {
+        $this->resetAfterTest();
+        $masked = $this->create_field(['preset' => 'custom', 'mask' => '999-AA']);
+        $limited = $this->create_field(['preset' => 'none'], ['shortname' => 'short', 'param2' => 5]);
+        $user = $this->getDataGenerator()->create_user();
+
+        profile_save_data((object) ['id' => $user->id, 'profile_field_doc' => '123AB', 'profile_field_short' => 'abcde']);
+        $this->assertSame('123-AB', $this->stored($masked, (int) $user->id));
+        $this->assertSame('abcde', $this->stored($limited, (int) $user->id));
+
+        profile_save_data((object) ['id' => $user->id, 'profile_field_doc' => 'ab123', 'profile_field_short' => 'abcdef']);
+        $this->assertSame('123-AB', $this->stored($masked, (int) $user->id));
+        $this->assertSame('abcde', $this->stored($limited, (int) $user->id));
+        $this->assertDebuggingCalledCount(2);
     }
 
     /**
@@ -234,6 +335,7 @@ final class field_class_test extends \advanced_testcase {
 
         $call(self::CPF_BAD);
         $this->assertSame(self::CPF, $this->stored($field, (int) $user->id));
+        $this->assertDebuggingCalled();
     }
 
     /**
@@ -257,6 +359,12 @@ final class field_class_test extends \advanced_testcase {
         // where the tool converts without checking first.
         $converted = uu_pre_process_custom_profile_data((object) ['profile_field_doc' => self::CPF_BAD]);
         $this->assertNull($converted->profile_field_doc);
+
+        $field = $this->create_field(['preset' => 'cpf'], ['shortname' => 'saved']);
+        $user = $this->getDataGenerator()->create_user();
+        profile_save_data((object) ['id' => $user->id, 'profile_field_saved' => self::CPF]);
+        profile_save_data((object) ['id' => $user->id, 'profile_field_saved' => null]);
+        $this->assertSame(self::CPF, $this->stored($field, (int) $user->id));
     }
 
     /**

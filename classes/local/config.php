@@ -33,9 +33,6 @@ use customfield_pattern\api;
  * Size and maximum length keep profilefield_text's columns so a reader of `user_info_field` that
  * knows text fields (an external function, a report) finds them where it expects them.
  *
- * Static helpers live here, not in define.class.php or field.class.php: the plugin validator
- * of the 5.2 CI leg parses those files and fatals on a member with two modifiers.
- *
  * @package    profilefield_pattern
  * @copyright  2026 Anderson Blaine
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -94,8 +91,8 @@ final class config {
     /**
      * The value of param3 for some pattern settings
      *
-     * @param array $settings setting => value; keys other than {@see self::PATTERN_KEYS},
-     *      non-scalar values and empty values are left out
+     * @param array $settings setting => value; values are trimmed, and keys other than
+     *      {@see self::PATTERN_KEYS}, non-scalar values and empty values are left out
      * @return string a JSON object
      */
     public static function encode(array $settings): string {

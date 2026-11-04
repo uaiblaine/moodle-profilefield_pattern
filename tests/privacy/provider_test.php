@@ -93,17 +93,30 @@ final class provider_test extends provider_testcase {
     }
 
     /**
-     * The value is exported as it is shown, the mask restored.
+     * Every pattern field is exported in its own subcontext, as it is shown, the mask restored.
      */
-    public function test_export_restores_the_mask(): void {
+    public function test_export_keeps_every_field_and_restores_the_mask(): void {
+        global $DB;
+        $cep = $this->getDataGenerator()->create_custom_profile_field([
+            'datatype' => 'pattern', 'shortname' => 'cep', 'name' => 'CEP',
+            'param2' => 8, 'param3' => config::encode(['preset' => 'cep', 'storeformat' => 'raw']),
+        ]);
         $user = $this->user_with_values();
+        $DB->insert_record('user_info_data', ['userid' => $user->id, 'fieldid' => $cep->id, 'data' => '01310100']);
         $context = \context_user::instance($user->id);
 
         provider::export_user_data(new approved_contextlist($user, 'profilefield_pattern', [$context->id]));
 
-        $exported = writer::with_context($context)->get_data([get_string('pluginname', 'profilefield_pattern')]);
+        $writer = writer::with_context($context);
+        $pluginname = get_string('pluginname', 'profilefield_pattern');
+        $exported = $writer->get_data([$pluginname, 'cpf']);
         $this->assertSame('CPF', $exported->name);
         $this->assertSame('529.982.247-25', $exported->data);
+        $exported = $writer->get_data([$pluginname, 'cep']);
+        $this->assertSame('CEP', $exported->name);
+        $this->assertSame('01310-100', $exported->data);
+        // The text field's value is not this plugin's to export.
+        $this->assertEmpty($writer->get_data([$pluginname, 'nick']));
     }
 
     /**

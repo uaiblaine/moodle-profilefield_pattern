@@ -103,7 +103,10 @@ class provider implements
     }
 
     /**
-     * Export the user's values, one record per field, under the plugin's name
+     * Export the user's values, one record per field, under the plugin's name and the field's shortname
+     *
+     * Each field gets its own subcontext: export_data() writes one data.json per subcontext, so a
+     * shared one would keep only the last field.
      *
      * @param approved_contextlist $contextlist
      * @return void
@@ -120,7 +123,8 @@ class provider implements
                     'description' => $record->description,
                     'data' => api::format(config::from_field($record), (string) $record->data),
                 ];
-                writer::with_context($context)->export_data([get_string('pluginname', 'profilefield_pattern')], $data);
+                $subcontext = [get_string('pluginname', 'profilefield_pattern'), $record->shortname];
+                writer::with_context($context)->export_data($subcontext, $data);
             }
         }
     }
@@ -184,11 +188,11 @@ class provider implements
      * One user's values of every pattern field, with the field's name and settings
      *
      * @param int $userid
-     * @return array records with name, description, param2, param3 and data
+     * @return array records with shortname, name, description, param2, param3 and data
      */
     protected static function get_records(int $userid): array {
         global $DB;
-        $sql = "SELECT uda.id, uif.name, uif.description, uif.param2, uif.param3, uda.data
+        $sql = "SELECT uda.id, uif.shortname, uif.name, uif.description, uif.param2, uif.param3, uda.data
                   FROM {user_info_data} uda
                   JOIN {user_info_field} uif ON uda.fieldid = uif.id
                  WHERE uda.userid = :userid

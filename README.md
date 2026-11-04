@@ -59,8 +59,14 @@ signup, visibility):
 On their profile, on the signup form and on "Add a new user" / "Edit profile", the field is a
 text input that formats the value as it is typed. On save the value is checked (mask, CPF/CNPJ
 check digits, character limit, regular expression) and stored formatted or as the typed
-characters only, per "Store as". It is always shown formatted: on the profile page, in report
-builder's user profile field columns and in a data export.
+characters only, per "Store as". It is shown formatted on the profile page, in report builder's
+user profile field columns, in the `displayvalue` of the user web services and in a data export.
+Places that read the stored value show it as stored, which with "Typed characters only" means
+without the mask: the bulk user download, identity fields (participants, grader report), report
+builder's filters and sorting, and `$USER->profile`.
+
+A field locked for a user ("Is this field locked?") is not checked when that user saves the
+profile: they cannot change it, and a value stored under earlier settings must not block the save.
 
 "Should the data be unique?" compares values as they are stored, so `529.982.247-25` and
 `52998224725` are the same CPF.
@@ -69,9 +75,9 @@ builder's user profile field columns and in a data export.
 
 | Path | Checked |
 |---|---|
-| Profile forms, "Add a new user", signup | yes, with the error under the field |
+| Profile forms, "Add a new user", signup (including `core_auth_signup_user`) | yes, with the error under the field |
 | Upload users (`tool_uploaduser`) | yes: a value the pattern rejects marks the row invalid in the preview and is not saved |
-| User web services (`core_user_create_users`, `core_user_update_users`) and authentication plugins that map external attributes (`auth_db`, `auth_ldap`, `auth_oauth2`) | not reported: core calls no validation there, so the field refuses to store a value the pattern rejects and keeps the one it had |
+| User web services (`core_user_create_users`, `core_user_update_users`) and authentication plugins that map external attributes (`auth_db`, `auth_ldap`, `auth_oauth2`) | not reported: core calls no validation there, so the field refuses to store a value the pattern rejects and keeps the one it had; with developer debugging on, the refusal is reported through `debugging()`. Uniqueness is not checked on these paths, as for every core field type |
 | `profile_save_custom_fields()` (authentication plugins' field mapping on `update_user_record()`) and direct writes to `user_info_data` | no: they bypass the field type entirely |
 
 
@@ -103,21 +109,25 @@ The plugin owns no database tables. It uses two core tables:
   deleted.
 
 The privacy provider declares `user_info_data`. A data request exports each value of a pattern
-field with the field's name and description, as it is shown (mask restored); a deletion request
-deletes the user's values of every pattern field.
+field, under the field's short name, with the field's name and description, as it is shown (mask
+restored); a deletion request deletes the user's values of every pattern field.
+
+Changing a field's format, mask or storage format queues an adhoc task that rewrites the field's
+stored values in the new shape on the next cron run. A stored value the new settings reject is
+left as it is.
 
 
 Troubleshooting
 ---------------
 
 - **"Pattern" is missing from the profile field menu**: `customfield_pattern` is not installed
-  or is older than 2026102300.
+  or is older than 2026110300.
 - **The mask does not format while typing**: the JavaScript comes from `customfield_pattern`;
   rebuild or reinstall it. The server still normalises and validates the value on save.
 - **A value stored under an earlier mask shows unformatted, or is refused when the user saves the
-  profile again**: changing a field's mask or storage format does not rewrite existing values; a
-  value that does not fit the current mask is shown as stored and must be corrected on the next
-  save of that profile.
+  profile again**: after a change of settings the adhoc task rewrites every value the new settings
+  accept (run cron, or `admin/cli/adhoc_task.php --execute`); a value they reject is shown as
+  stored and must be corrected on the next save of that profile, unless the field is locked.
 
 
 Translations
