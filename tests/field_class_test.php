@@ -76,7 +76,7 @@ final class field_class_test extends \advanced_testcase {
     }
 
     /**
-     * Save a value for a user the way the profile forms do.
+     * Save a value for a user through profile_save_data(), without validating it first.
      *
      * @param int $userid
      * @param string $value

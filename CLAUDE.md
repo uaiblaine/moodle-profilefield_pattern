@@ -17,7 +17,7 @@ character limit, param3 the pattern settings as JSON) and values in `user_info_d
 rule comes from `\customfield_pattern\api` (hard dependency in `version.php`); this plugin is the
 adapter. Supports Moodle **5.1 through 5.3** (`$plugin->requires = 2025100600`,
 `$plugin->supported = [501, 503]`), one branch, `main`, like its dependency.
-CI is the moodle-an-hochschulen reusable workflow, one job per supported
+CI is the reusable workflow of `uaiblaine/moodle-workflows` (the fork of MAH's), one job per supported
 branch in `.github/workflows/ci.yml` — **update those jobs when `supported`
 changes**. Development happens on the m503 stack; this repo is mounted at
 `user/profile/field/pattern` into the stacks `~/dev/moodle-dev/plugins.conf` names.
@@ -85,7 +85,7 @@ numbers itself in the namespace of its Moodle version (`20241007XX` for 4.5, `20
 `20260420XX` for 5.2), starting at its `$plugin->requires` value and counting up on that branch
 alone, because moodle.org needs a different number for each Moodle-specific release. The rule and
 its consequences for upgrade steps and cherry-picks are in the fleet file (`~/dev/CLAUDE.md`,
-"Versioning / upgrade discipline").
+"XMLDB, upgrades, privacy, versioning").
 
 ## Architecture gotchas
 
@@ -103,8 +103,8 @@ its consequences for upgrade steps and cherry-picks are in the fleet file (`~/de
   services, auth plugins' attribute mapping) reaches `edit_save_data()` unchecked: the override
   refuses to write a value the pattern rejects. `profile_save_custom_fields()` bypasses the field
   class entirely. The README's "Where values are and are not checked" table is the contract.
-- **No static members or constants in `define.class.php` / `field.class.php`**: the 5.2 leg's
-  `validate` fatals on a member with two modifiers there; they live in `classes/local/config.php`.
+- **Shared constants and static helpers live in `classes/local/config.php`**, autoloaded, so the
+  define and field classes (loaded by core through `require_once`) and the tests share one copy.
 
 ## Testing notes
 

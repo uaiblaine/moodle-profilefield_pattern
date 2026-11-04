@@ -132,7 +132,7 @@ class profile_define_pattern extends profile_define_base {
             }
         }
 
-        // The default value obeys the same rules as typed input, once the rules themselves are valid.
+        // The default value obeys the same rules as typed input; it is checked only when the settings raised no error.
         $default = (string) ($data->defaultdata ?? '');
         if (!$errors && trim($default) !== '') {
             $error = api::validate($config, $default);
