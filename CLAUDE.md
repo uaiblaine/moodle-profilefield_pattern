@@ -108,7 +108,10 @@ bumps its own counter. The rule and its consequences for upgrade steps are in th
   `profile_save_custom_fields()` bypasses the field class entirely. The README's "Where values
   are and are not checked" table is the contract.
 - **A field locked for the user is not validated** (same condition as core's hard freeze): the
-  form submits the stored value, which may predate the current settings.
+  form submits the stored value, which may predate the current settings. `edit_save_data()` keeps
+  it without a `debugging()` because it is the stored value, not because the field is locked: the
+  login sync (`update_user_record_by_id()`) writes locked fields as a user without
+  `moodle/user:update`.
 - **A change of pattern settings queues `task\renormalise_values`**, which reads the settings when
   it runs and leaves values the new settings reject as stored.
 - **Shared constants and static helpers live in `classes/local/config.php`**, autoloaded, so the

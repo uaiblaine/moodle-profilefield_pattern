@@ -27,5 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A field locked for the user is not validated when they save their profile, so a value stored
   under earlier settings cannot block the save.
 - A value refused on a path without validation (user web services, authentication sync) is
-  reported through `debugging()` at developer level.
+  reported through `debugging()` at developer level, unless it is the stored value: a locked
+  field's frozen form submits the stored value, which may predate the current settings, and saving
+  that profile no longer leaves a developer trace.
 - Requires `customfield_pattern` 2026110300, whose `api::element_type()` names the input element.
