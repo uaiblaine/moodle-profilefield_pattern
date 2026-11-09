@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Changed
+
+- One branch per Moodle version: `MOODLE_501_STABLE`, `MOODLE_502_STABLE` and `MOODLE_503_STABLE`
+  (`main`). This branch supports Moodle 5.3 only and numbers its versions from 2026100500; a site that
+  installed a development build (2026110301) must set the plugin's version row below 2026100500 before
+  upgrading.
+
 ### Added
 
 - The "Pattern" user profile field type: a text input with the mask and validation of
