@@ -132,6 +132,13 @@ class profile_field_pattern extends profile_field_base {
      * written and the stored one stays: what is stored has passed {@see api::validate()}. Those
      * callers have no error channel, so the refusal is reported to developers only.
      *
+     * A rejected value that is the stored one is not reported: a field locked for the user is
+     * frozen with its stored value, which the form submits and which may predate the current
+     * settings ({@see self::edit_validate_field()}), so reporting it would trace every save of
+     * that profile. The check is on the value, not on the lock, because the authentication sync
+     * at login ({@see update_user_record_by_id()}) writes locked fields as a user who could not
+     * edit them.
+     *
      * @param stdClass $usernew
      * @return void
      */
@@ -140,12 +147,29 @@ class profile_field_pattern extends profile_field_base {
         if (is_scalar($value) && trim((string) $value) !== '') {
             $error = api::validate($this->get_config(), (string) $value);
             if ($error !== null) {
-                debugging("Profile field {$this->field->shortname} of user {$usernew->id} kept its stored value: " .
-                    strip_tags($error), DEBUG_DEVELOPER);
+                if (!$this->is_stored_value((string) $value)) {
+                    debugging("Profile field {$this->field->shortname} of user {$usernew->id} kept its stored value: " .
+                        strip_tags($error), DEBUG_DEVELOPER);
+                }
                 return;
             }
         }
         parent::edit_save_data($usernew);
+    }
+
+    /**
+     * Whether a submitted value is the stored one, in its stored or its displayed shape
+     *
+     * @param string $value the submitted value
+     * @return bool
+     */
+    private function is_stored_value(string $value): bool {
+        if ($this->data === null) {
+            return false;
+        }
+        $stored = (string) $this->data;
+        $shapes = [trim($stored), trim(api::format($this->get_config(), $stored))];
+        return in_array(trim($value), $shapes, true);
     }
 
     /**

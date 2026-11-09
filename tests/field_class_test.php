@@ -218,6 +218,37 @@ final class field_class_test extends \advanced_testcase {
     }
 
     /**
+     * Saving a profile whose locked field holds a value the settings now reject leaves no trace.
+     *
+     * The frozen form submits the stored value, in its displayed shape, to profile_save_data();
+     * nothing changes, so nothing is reported, and the value stays.
+     */
+    public function test_locked_field_save_of_the_stored_value_is_silent(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $field = $this->create_field(['preset' => 'cpf'], ['locked' => 1]);
+        $user = $this->getDataGenerator()->create_user();
+        $DB->insert_record('user_info_data', ['userid' => $user->id, 'fieldid' => $field->id, 'data' => self::CPF_BAD]);
+        $this->setUser($user);
+
+        $mform = new \MoodleQuickForm('test', 'post', '');
+        $instance = $this->instance($field, (int) $user->id);
+        $instance->edit_field_add($mform);
+        $instance->edit_field_set_locked($mform);
+        $submitted = $mform->exportValue('profile_field_doc');
+        $this->assertSame(self::CPF_BAD, $submitted);
+
+        $this->save((int) $user->id, $submitted);
+        $this->assertDebuggingNotCalled();
+        $this->assertSame(self::CPF_BAD, $this->stored($field, (int) $user->id));
+
+        // Control: another rejected value on the same path is still reported.
+        $this->save((int) $user->id, '111.111.111-11');
+        $this->assertDebuggingCalled();
+        $this->assertSame(self::CPF_BAD, $this->stored($field, (int) $user->id));
+    }
+
+    /**
      * A locked field is frozen showing its stored value with the mask, not the raw stored string.
      */
     public function test_locked_field_shows_the_formatted_value(): void {
