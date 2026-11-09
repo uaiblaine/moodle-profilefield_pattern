@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Changed
+
+- One branch per Moodle version: `MOODLE_501_STABLE`, `MOODLE_502_STABLE` and `MOODLE_503_STABLE`
+  (`main`). This branch supports Moodle 5.1 only and numbers its versions from 2025100600; a site that
+  installed a development build (2026110301) must set the plugin's version row below 2025100600 before
+  upgrading.
+
 ### Added
 
 - The "Pattern" user profile field type: a text input with the mask and validation of
@@ -20,5 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A field locked for the user is not validated when they save their profile, so a value stored
   under earlier settings cannot block the save.
 - A value refused on a path without validation (user web services, authentication sync) is
-  reported through `debugging()` at developer level.
+  reported through `debugging()` at developer level, unless it is the stored value: a locked
+  field's frozen form submits the stored value, which may predate the current settings, and saving
+  that profile no longer leaves a developer trace.
 - Requires `customfield_pattern` 2026110300, whose `api::element_type()` names the input element.

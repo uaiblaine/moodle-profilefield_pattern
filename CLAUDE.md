@@ -15,12 +15,14 @@ alphanumeric, CEP, Brazilian phone, custom masks, an optional anchored regex), s
 `profilefield_text`. It owns no tables: settings live in `user_info_field` (param1 size, param2
 character limit, param3 the pattern settings as JSON) and values in `user_info_data.data`. Every
 rule comes from `\customfield_pattern\api` (hard dependency in `version.php`); this plugin is the
-adapter. Supports Moodle **5.1 through 5.3** (`$plugin->requires = 2025100600`,
-`$plugin->supported = [501, 503]`), one branch, `main`, like its dependency.
+adapter. **One branch per Moodle version**: `MOODLE_501_STABLE`, `MOODLE_502_STABLE` and
+`MOODLE_503_STABLE` (`main` = `MOODLE_503_STABLE`), each with `$plugin->supported = [N, N]`; its
+dependency keeps one branch, `main`, for 5.1 through 5.3.
 CI is the reusable workflow of `uaiblaine/moodle-workflows` (the fork of MAH's), one job per supported
 branch in `.github/workflows/ci.yml` — **update those jobs when `supported`
-changes**. Development happens on the m503 stack; this repo is mounted at
-`user/profile/field/pattern` into the stacks `~/dev/moodle-dev/plugins.conf` names.
+changes**. Development happens on `main` and the m503 stack. Checkouts, mounted at
+`user/profile/field/pattern` by explicit `~/dev/moodle-dev/plugins.conf` lines:
+`moodle-profilefield_pattern` (`main`, m503 and m503b), `-502` (m502 and m502b), `-501` (m501).
 
 ## Agent orchestration budget (fleet rule, repeated here on purpose)
 
@@ -80,13 +82,13 @@ classes/task/           renormalise_values: rewrites stored values after a setti
 
 ## Versions
 
-`$plugin->version` is a date-based number (`YYYYMMDDXX`) while the plugin ships one branch for
-every Moodle version it supports. When it splits into one branch per Moodle version, each branch
-numbers itself in the namespace of its Moodle version (`20241007XX` for 4.5, `20251006XX` for 5.1,
-`20260420XX` for 5.2), starting at its `$plugin->requires` value and counting up on that branch
-alone, because moodle.org needs a different number for each Moodle-specific release. The rule and
-its consequences for upgrade steps and cherry-picks are in the fleet file (`~/dev/CLAUDE.md`,
-"XMLDB, upgrades, privacy, versioning").
+Each branch numbers itself in the namespace of its Moodle version (`20251006XX` for 5.1,
+`20260420XX` for 5.2, `20261005XX` for 5.3), starting at its `$plugin->requires` value and counting
+up on that branch alone, because moodle.org needs a different number for each Moodle-specific
+release; releases are tagged `v<major>.<minor>-r<N>`. A fix lands on `main` first and is
+cherry-picked; each branch keeps its own `version.php`, `ci.yml` and README requirements line, then
+bumps its own counter. The rule and its consequences for upgrade steps are in the fleet file
+(`~/dev/CLAUDE.md`, "XMLDB, upgrades, privacy, versioning").
 
 ## Architecture gotchas
 
@@ -106,7 +108,10 @@ its consequences for upgrade steps and cherry-picks are in the fleet file (`~/de
   `profile_save_custom_fields()` bypasses the field class entirely. The README's "Where values
   are and are not checked" table is the contract.
 - **A field locked for the user is not validated** (same condition as core's hard freeze): the
-  form submits the stored value, which may predate the current settings.
+  form submits the stored value, which may predate the current settings. `edit_save_data()` keeps
+  it without a `debugging()` because it is the stored value, not because the field is locked: the
+  login sync (`update_user_record_by_id()`) writes locked fields as a user without
+  `moodle/user:update`.
 - **A change of pattern settings queues `task\renormalise_values`**, which reads the settings when
   it runs and leaves values the new settings reject as stored.
 - **Shared constants and static helpers live in `classes/local/config.php`**, autoloaded, so the
