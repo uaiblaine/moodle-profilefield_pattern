@@ -17,7 +17,8 @@ character limit, param3 the pattern settings as JSON) and values in `user_info_d
 rule comes from `\customfield_pattern\api` (hard dependency in `version.php`); this plugin is the
 adapter. **One branch per Moodle version**: `MOODLE_501_STABLE`, `MOODLE_502_STABLE` and
 `MOODLE_503_STABLE` (`main` = `MOODLE_503_STABLE`), each with `$plugin->supported = [N, N]`; its
-dependency keeps one branch, `main`, for 5.1 through 5.3.
+dependency has the same branches, and each branch requires, and installs in CI, the dependency's
+branch of the same Moodle version.
 CI is the reusable workflow of `uaiblaine/moodle-workflows` (the fork of MAH's), one job per supported
 branch in `.github/workflows/ci.yml` — **update those jobs when `supported`
 changes**. Development happens on `main` and the m503 stack. Checkouts, mounted at

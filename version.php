@@ -30,4 +30,4 @@ $plugin->requires  = 2026042000;
 $plugin->supported = [502, 502];
 $plugin->maturity  = MATURITY_BETA;
 $plugin->release   = 'v5.2-r1';
-$plugin->dependencies = ['customfield_pattern' => 2026110300];
+$plugin->dependencies = ['customfield_pattern' => 2026042000];
