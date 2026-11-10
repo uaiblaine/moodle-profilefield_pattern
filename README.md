@@ -19,8 +19,8 @@ Requirements
 
 - Moodle 5.3 (branch `MOODLE_503_STABLE`, which `main` follows; releases `v5.3-rN`). Other Moodle versions have
   their own branches: `MOODLE_501_STABLE` (5.1), `MOODLE_502_STABLE` (5.2) and `MOODLE_503_STABLE` (5.3).
-- [customfield_pattern](https://github.com/uaiblaine/moodle-customfield_pattern) 2026110300 or
-  later, installed at `/customfield/field/pattern`.
+- [customfield_pattern](https://github.com/uaiblaine/moodle-customfield_pattern) 2026100500 or later,
+  from its branch for the same Moodle version (`MOODLE_503_STABLE`), installed at `/customfield/field/pattern`.
 
 
 Installation
@@ -116,7 +116,7 @@ Troubleshooting
 ---------------
 
 - **"Pattern" is missing from the profile field menu**: `customfield_pattern` is not installed
-  or is older than 2026110300.
+  or is older than 2026100500 (its 5.3 branch).
 - **The mask does not format while typing**: the JavaScript comes from `customfield_pattern`;
   rebuild or reinstall it. The server still normalises and validates the value on save.
 - **A value stored under an earlier mask shows unformatted, or is refused when the user saves the
