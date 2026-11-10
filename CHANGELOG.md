@@ -30,4 +30,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   reported through `debugging()` at developer level, unless it is the stored value: a locked
   field's frozen form submits the stored value, which may predate the current settings, and saving
   that profile no longer leaves a developer trace.
-- Requires `customfield_pattern` 2026110300, whose `api::element_type()` names the input element.
+- Requires `customfield_pattern` 2026100500, its 5.3 branch, whose `api::element_type()` names the input
+  element.

@@ -41,12 +41,12 @@ jobs:
   # CI_RUNNER is set (`mdl runner add <repo>`); a pull request from a fork always stays on
   # GitHub's ubuntu-24.04, and the hosts refuse code from forks anyway.
   #
-  # customfield_pattern is a hard dependency (version.php) and has one branch, main, for every
-  # Moodle version this plugin has a branch for.
+  # customfield_pattern is a hard dependency (version.php) with one branch per Moodle version too;
+  # the job installs the branch of its own version.
   ci-503:
     name: Moodle 5.03
     uses: uaiblaine/moodle-workflows/.github/workflows/moodle-plugin-ci.yml@main
     with:
       runner: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && vars.CI_RUNNER || '' }}
       moodle-core-branch: MOODLE_503_STABLE
-      plugin-dependencies: uaiblaine/moodle-customfield_pattern,main
+      plugin-dependencies: uaiblaine/moodle-customfield_pattern,MOODLE_503_STABLE
